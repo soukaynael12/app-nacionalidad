@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
+import { preguntasNacionalidad } from './preguntasNacionalidad'; // Importamos tus preguntas
 
-export default function TriviaApp() {
+export default function App() {
 const [preguntas, setPreguntas] = useState([]);
 const [indiceActual, setIndiceActual] = useState(0);
 const [puntuacion, setPuntuacion] = useState(0);
@@ -8,46 +9,35 @@ const [tiempoRestante, setTiempoRestante] = useState(15);
 const [juegoTerminado, setJuegoTerminado] = useState(false);
 const [cargando, setCargando] = useState(true);
 
-// Estado del Récord (LocalStorage)
 const [record, setRecord] = useState(() => {
 const guardado = localStorage.getItem('recordTrivia');
 return guardado ? parseInt(guardado) : 0;
 });
 
-// 1. Cargar preguntas al iniciar (Paso 1)
+// Cargar preguntas locales al iniciar
 useEffect(() => {
-cargarPreguntas();
+setCargando(true);
+// Simulamos 1 segundo de carga
+setTimeout(() => {
+// Mezclamos las preguntas y sus opciones
+const mezcladas = preguntasNacionalidad
+.sort(() => Math.random() - 0.5)
+.map((p) => ({
+...p,
+opciones: [...p.opciones].sort(() => Math.random() - 0.5)
+}));
+
+setPreguntas(mezcladas);
+setCargando(false);
+}, 1000);
 }, []);
 
-const cargarPreguntas = async () => {
-setCargando(true);
-try {
-const response = await fetch('https://opentdb.com/api.php?amount=5&type=multiple&lang=es');
-const data = await response.json();
-
-const formateadas = data.results.map((p) => {
-const opciones = [...p.incorrect_answers, p.correct_answer];
-return {
-pregunta: p.question,
-opciones: opciones.sort(() => Math.random() - 0.5),
-respuestaCorrecta: p.correct_answer
-};
-});
-
-setPreguntas(formateadas);
-} catch (error) {
-console.error("Error cargando preguntas", error);
-} finally {
-setCargando(false);
-}
-};
-
-// 2. Temporizador (Paso 2)
+// Temporizador
 useEffect(() => {
 if (juegoTerminado || cargando || preguntas.length === 0) return;
 
 if (tiempoRestante === 0) {
-manejarRespuesta(null); // Se acabó el tiempo
+manejarRespuesta(null);
 return;
 }
 
@@ -58,7 +48,7 @@ setTiempoRestante((prev) => prev - 1);
 return () => clearInterval(timerId);
 }, [tiempoRestante, juegoTerminado, cargando, preguntas]);
 
-// 3. Manejar la respuesta
+// Manejar respuesta
 const manejarRespuesta = (opcionElegida) => {
 const esCorrecta = opcionElegida === preguntas[indiceActual].respuestaCorrecta;
 
@@ -66,19 +56,16 @@ let nuevaPuntuacion = puntuacion;
 if (esCorrecta) {
 nuevaPuntuacion += 1;
 setPuntuacion(nuevaPuntuacion);
-// Opcional: Aquí podrías mostrar un mensaje verde de "¡Correcto!"
 }
 
-// Pasar a la siguiente pregunta o terminar
 if (indiceActual + 1 < preguntas.length) {
 setIndiceActual(indiceActual + 1);
-setTiempoRestante(15); // Reiniciar tiempo
+setTiempoRestante(15);
 } else {
 terminarJuego(nuevaPuntuacion);
 }
 };
 
-// 4. Terminar juego y guardar récord (Paso 3)
 const terminarJuego = (puntuacionFinal) => {
 setJuegoTerminado(true);
 if (puntuacionFinal > record) {
@@ -87,35 +74,46 @@ localStorage.setItem('recordTrivia', puntuacionFinal.toString());
 }
 };
 
-// 5. Reiniciar Juego
 const reiniciarJuego = () => {
 setIndiceActual(0);
 setPuntuacion(0);
 setTiempoRestante(15);
 setJuegoTerminado(false);
-cargarPreguntas(); // Volver a pedir preguntas a la API
+// Volvemos a mezclar las preguntas
+const mezcladas = preguntasNacionalidad
+.sort(() => Math.random() - 0.5)
+.map((p) => ({
+...p,
+opciones: [...p.opciones].sort(() => Math.random() - 0.5)
+}));
+setPreguntas(mezcladas);
 };
 
-if (cargando) return <h2>Cargando preguntas...</h2>;
+if (cargando) {
+return <h2 style={{ textAlign: 'center', marginTop: '50px' }}>Cargando preguntas... ⏳</h2>;
+}
 
-// 6. Interfaz (Paso 4)
 if (juegoTerminado) {
 return (
-<div style={{ textAlign: 'center', padding: '50px' }}>
+<div style={{ textAlign: 'center', marginTop: '50px', fontFamily: 'Arial' }}>
 <h1>¡Juego Terminado! 🎉</h1>
 <h2>Tu puntuación: {puntuacion} / {preguntas.length}</h2>
-<h3>🏆 Récord histórico: {record}</h3>
-<button onClick={reiniciarJuego} style={{ padding: '10px 20px', fontSize: '16px', marginTop: '20px' }}>
+<h3 style={{ color: 'goldenrod' }}>🏆 Récord histórico: {record}</h3>
+<button
+onClick={reiniciarJuego}
+style={{ padding: '10px 20px', fontSize: '16px', marginTop: '20px', cursor: 'pointer' }}
+>
 Volver a Jugar
 </button>
 </div>
 );
 }
 
-const progreso = ((indiceActual) / preguntas.length) * 100;
+const progreso = (indiceActual / preguntas.length) * 100;
 
 return (
-<div style={{ maxWidth: '600px', margin: '0 auto', padding: '20px', fontFamily: 'sans-serif' }}>
+<div style={{ maxWidth: '600px', margin: '50px auto', fontFamily: 'Arial' }}>
+
 {/* Barra de progreso */}
 <div style={{ width: '100%', backgroundColor: '#e0e0e0', height: '10px', borderRadius: '5px', marginBottom: '20px' }}>
 <div style={{ width: `${progreso}%`, backgroundColor: '#4CAF50', height: '100%', borderRadius: '5px', transition: 'width 0.3s' }}></div>
@@ -123,13 +121,13 @@ return (
 
 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '20px' }}>
 <span>Pregunta {indiceActual + 1} de {preguntas.length}</span>
-<span style={{ color: tiempoRestante <= 5 ? 'red' : 'black', fontWeight: 'bold' }}>
+{/* He cambiado 'black' por 'white' para que se vea en fondo oscuro */}
+<span style={{ color: tiempoRestante <= 5 ? 'red' : 'white', fontWeight: 'bold' }}>
 ⏱️ {tiempoRestante}s
 </span>
 </div>
 
-{/* HTML de la API (esto decodifica caracteres como &quot; a comillas normales) */}
-<h2 dangerouslySetInnerHTML={{ __html: preguntas[indiceActual].pregunta }} />
+<h2>{preguntas[indiceActual].pregunta}</h2>
 
 <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
 {preguntas[indiceActual].opciones.map((opcion, index) => (
@@ -137,10 +135,10 @@ return (
 key={index}
 onClick={() => manejarRespuesta(opcion)}
 style={{ padding: '15px', fontSize: '16px', cursor: 'pointer' }}
-dangerouslySetInnerHTML={{ __html: opcion }} // Usamos dangerouslySetInnerHTML por los caracteres especiales de la API
-/>
+>
+{opcion}
+</button>
 ))}
 </div>
 </div>
 );
-}
