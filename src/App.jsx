@@ -142,3 +142,4 @@ style={{ padding: '15px', fontSize: '16px', cursor: 'pointer' }}
 </div>
 </div>
 );
+}
